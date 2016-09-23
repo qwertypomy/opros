@@ -11,7 +11,8 @@ class UserSchema(ma.ModelSchema):
 
 class PollSchema(ma.ModelSchema):
     class Meta:
-        model = Poll
+    		model = Poll 
+    		exclude = ('questions',)
 
 
 class QuestionSchema(ma.ModelSchema):
