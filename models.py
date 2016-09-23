@@ -16,7 +16,7 @@ class User(db.Model, UserMixin):
                                 lazy='dynamic')
     def __init__(self, login, password, user_name):
         self.login = login
-        self.password = bcrypt.generate_password_hash(password)
+        self.password = len(bcrypt.generate_password_hash(password))
         self.user_name = user_name
 
     def is_authenticated(self):
