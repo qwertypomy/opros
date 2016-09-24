@@ -7,6 +7,7 @@ ma = Marshmallow()
 class UserSchema(ma.ModelSchema):
     class Meta:
         model = User
+        exclude = ('password', 'api_key')
 
 
 class PollSchema(ma.ModelSchema):
