@@ -15,7 +15,7 @@ class User(db.Model, UserMixin):
     api_key = db.Column(db.String(64), unique=True, index=True)
     polls = db.relationship('Poll', backref='user',
                             lazy='dynamic')
-    answer_id = db.Column(db.Integer, db.ForeignKey('answer.id'))
+    #answer_id = db.Column(db.Integer, db.ForeignKey('answer.id'))
 
     def __init__(self, email, password, user_name):
         self.email = email
@@ -61,7 +61,7 @@ class Answer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(128), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('question.id'))
-    users = db.relationship('User')
+    #users = db.relationship('User')
 
     @property
     def get_poll_id(self):
