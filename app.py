@@ -2,9 +2,9 @@ import os
 from flask import Flask, jsonify, request, url_for, redirect, session
 from flask_login import LoginManager, current_user, login_required, \
     login_user, logout_user
-from models import db, User, Poll, Question, Unswer
+from models import db, User, Poll, Question, Answer
 from schemas import ma, user_schema, users_schema, poll_schema, \
-    polls_schema, unswer_schema, unswers_schema, \
+    polls_schema, answer_schema, answers_schema, \
     question_schema, questions_schema
 
 
@@ -136,6 +136,9 @@ def logout():
     resp.status_code = 200
     return resp  #redirect(url_for('polls'))
 
+####################################################################################
+####################################################################################
+
 
 @app.route("/polls")
 def polls():
@@ -185,6 +188,9 @@ def change_poll(id):
     resp.status_code = 400
     return resp
 
+####################################################################################
+####################################################################################
+
 
 @app.route("/polls/<int:id>/questions")
 def questions(id):
@@ -207,7 +213,7 @@ def create_question(id):
         db.session.add(question)
         db.session.commit()
 
-        resp = jsonify({"message": "question created"})
+        resp = jsonify({"message": "question successfuly created"})
         resp.status_code = 201
         resp.headers["Location"] = question.url
         return resp
@@ -240,6 +246,69 @@ def change_question(p_id, id):
     resp = jsonify({'error': 'access error'})
     resp.status_code = 400
     return resp
+
+####################################################################################
+####################################################################################
+
+
+@app.route("/polls/<int:p_id>/questions/<int:id>/answers")
+def answers(p_id, id):
+    question = Question.query.get_or_404(id)
+    answers = Answer.query.filter_by(question_id=id)
+    return answers_schema.jsonify(answers)
+
+
+@app.route("/polls/<int:p_id>/questions/<int:id>/answers", methods=['POST'])
+@login_required
+def create_answer(id, p_id):
+    poll = Poll.query.get_or_404(p_id)
+    if current_user.id == poll.user_id:
+        answer, errors = answer_schema.load(request.form)
+        if errors:
+            resp = jsonify(errors)
+            resp.status_code = 400
+            return resp
+        answer.question_id = id
+        db.session.add(answer)
+        db.session.commit()
+
+        resp = jsonify({"message": "answer successfuly created"})
+        resp.status_code = 201
+        resp.headers["Location"] = answer.url
+        return resp
+    resp = jsonify({'error': 'access error'})
+    resp.status_code = 400
+    return resp
+
+
+@app.route("/polls/<int:p_id>/questions/<int:q_id>/answers/<int:id>")
+def get_answer(id, q_id, p_id):
+    answer = Answer.query.get_or_404(id)
+    return answer_schema.jsonify(answer)
+
+
+@app.route("/polls/<int:p_id>/questions/<int:q_id>/answers/<int:id>", methods=['PUT'])
+@login_required
+def change_answer(p_id, q_id, id):
+    poll = Poll.query.get_or_404(p_id)
+    if current_user.id == poll.user_id:
+        answer = Answer.query.get_or_404(id)
+        if request.form['text']:
+            answer.text = request.form['text']
+            db.session.commit()
+            resp = jsonify({'message': 'answer successfuly changed'})
+            resp.status_code = 201
+            return resp
+        resp = jsonify({'error': 'Invalid input'})
+        resp.status_code = 400
+        return resp
+    resp = jsonify({'error': 'access error'})
+    resp.status_code = 400
+    return resp
+
+
+####################################################################################
+####################################################################################
 
 
 @app.errorhandler(404)

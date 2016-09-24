@@ -1,5 +1,5 @@
 from flask_marshmallow import Marshmallow
-from models import User, Poll, Question, Unswer
+from models import User, Poll, Question, Answer
 
 ma = Marshmallow()
 
@@ -12,8 +12,8 @@ class UserSchema(ma.ModelSchema):
 
 class PollSchema(ma.ModelSchema):
     class Meta:
-    		model = Poll 
-    		exclude = ('questions',)
+        model = Poll
+        exclude = ('questions',)
 
 
 class QuestionSchema(ma.ModelSchema):
@@ -21,9 +21,9 @@ class QuestionSchema(ma.ModelSchema):
         model = Question
 
 
-class UnswerSchema(ma.ModelSchema):
+class AnswerSchema(ma.ModelSchema):
     class Meta:
-        model = Unswer
+        model = Answer
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
@@ -34,5 +34,5 @@ polls_schema = PollSchema(many=True)
 question_schema = QuestionSchema()
 questions_schema = QuestionSchema(many=True)
 
-unswer_schema = UnswerSchema()
-unswers_schema = UnswerSchema(many=True)
+answer_schema = AnswerSchema()
+answers_schema = AnswerSchema(many=True)
