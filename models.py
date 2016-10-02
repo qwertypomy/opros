@@ -1,10 +1,14 @@
 from flask import url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from flask_bcrypt import Bcrypt
+from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
-bcrypt = Bcrypt()
+
+association_table = db.Table('association', db.Model.metadata,
+    db.Column('answer_id', db.Integer, db.ForeignKey('answer.id')),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
+)
 
 
 class User(db.Model, UserMixin):
@@ -15,11 +19,10 @@ class User(db.Model, UserMixin):
     api_key = db.Column(db.String(64), unique=True, index=True)
     polls = db.relationship('Poll', backref='user',
                             lazy='dynamic')
-    #answer_id = db.Column(db.Integer, db.ForeignKey('answer.id'))
 
     def __init__(self, email, password, user_name):
         self.email = email
-        self.password = password #bcrypt.generate_password_hash(password)
+        self.password = generate_password_hash(password)
         self.user_name = user_name
 
     def get_id(self):
@@ -61,7 +64,7 @@ class Answer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(128), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('question.id'))
-    #users = db.relationship('User')
+    user = db.relationship("User", secondary=association_table)
 
     @property
     def get_poll_id(self):
@@ -71,3 +74,12 @@ class Answer(db.Model):
     @property
     def url(self):
         return url_for("get_answer", id=self.id, p_id=self.get_poll_id, q_id = self.question_id)
+
+    def reply(self, user):
+        self.user.append(user)
+        return self
+
+    def cancel_reply(self, user):
+        self.user.remove(user)
+        return self
+

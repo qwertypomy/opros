@@ -2,11 +2,11 @@ import os
 from flask import Flask, jsonify, request, url_for, redirect, session
 from flask_login import LoginManager, current_user, login_required, \
     login_user, logout_user
-from models import db, User, Poll, Question, Answer
+from models import db, User, Poll, Question, Answer, association_table
 from schemas import ma, user_schema, users_schema, poll_schema, \
     polls_schema, answer_schema, answers_schema, \
     question_schema, questions_schema
-
+from werkzeug.security import check_password_hash
 
 login_manager = LoginManager()
 
@@ -99,7 +99,7 @@ def registration():
         db.session.add(user)
         db.session.commit()
 
-        user = User.query.filter_by(email=rf['email']).first()
+        user = User.query.filter_by(email=rf['email']).first_or_404()
         login_user(user)
 
         resp = jsonify({"message": "registration successful"})
@@ -117,8 +117,8 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('profile'))
     rf = request.form
-    user = User.query.filter_by(email=rf['email']).first()
-    if user and user.password == rf['password']:
+    user = User.query.filter_by(email=rf['email']).first_or_404()
+    if user and check_password_hash(user.password, rf['password']):
         login_user(user)
         resp = jsonify({'message': 'successfully logged in'})
         resp.status_code = 201
@@ -253,7 +253,7 @@ def change_question(p_id, id):
 
 @app.route("/polls/<int:p_id>/questions/<int:id>/answers")
 def answers(p_id, id):
-    question = Question.query.get_or_404(id)
+    Question.query.get_or_404(id)
     answers = Answer.query.filter_by(question_id=id)
     return answers_schema.jsonify(answers)
 
@@ -262,6 +262,7 @@ def answers(p_id, id):
 @login_required
 def create_answer(id, p_id):
     poll = Poll.query.get_or_404(p_id)
+    Question.query.get_or_404(id)
     if current_user.id == poll.user_id:
         answer, errors = answer_schema.load(request.form)
         if errors:
@@ -291,6 +292,7 @@ def get_answer(id, q_id, p_id):
 @login_required
 def change_answer(p_id, q_id, id):
     poll = Poll.query.get_or_404(p_id)
+    Question.query.get_or_404(id)
     if current_user.id == poll.user_id:
         answer = Answer.query.get_or_404(id)
         if request.form['text']:
@@ -307,6 +309,32 @@ def change_answer(p_id, q_id, id):
     return resp
 
 
+####################################################################################
+####################################################################################
+
+
+@app.route("/polls/<int:p_id>/questions/<int:q_id>/answers/<int:id>", methods=['POST'])
+@login_required
+def reply(id, q_id, p_id):
+    Poll.query.get_or_404(p_id)
+    question = Question.query.get_or_404(q_id)
+
+    answers = question.answers
+    for answer in answers:
+        a_id = answer.id
+        a = Answer.query.get_or_404(a_id)
+        users = a.user
+        for user in users:
+            if user.id == current_user.id:
+                answer.cancel_reply(current_user)
+                break
+    answer = Answer.query.get_or_404(id)
+    u = answer.reply(current_user)
+    db.session.add(u)
+    db.session.commit()
+    resp = jsonify({'message': 'reply successfuly adopted'})
+    resp.status_code = 201
+    return resp
 ####################################################################################
 ####################################################################################
 
