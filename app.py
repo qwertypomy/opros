@@ -359,5 +359,12 @@ def metod_not_allowed(error):
     resp.status_code = 405
     return resp
 
+@app.errorhandler(500)
+def internal_server_error(error):
+    resp = jsonify({"error":"internal server error"})
+    resp.status_code = 500
+    return resp
+
+
 if __name__ == '__main__':
     app.run()
