@@ -2,11 +2,13 @@ import os
 from flask import Flask, jsonify, request, url_for, redirect, session
 from flask_login import LoginManager, current_user, login_required, \
     login_user, logout_user
-from models import db, User, Poll, Question, Answer, association_table
+from datetime import datetime
+from models import db, User, Poll, Question, Answer
 from schemas import ma, user_schema, users_schema, poll_schema, \
     polls_schema, answer_schema, answers_schema, \
     question_schema, questions_schema
 from werkzeug.security import check_password_hash
+from crossdomain import crossdomain
 
 login_manager = LoginManager()
 
@@ -141,8 +143,9 @@ def logout():
 
 
 @app.route("/polls")
+@crossdomain(origin='*')
 def polls():
-    polls = Poll.query.all()
+    polls = Poll.query.all() #Poll.query.all().order_by(viewers_number).limit(30)
     return polls_schema.jsonify(polls)
 
 
@@ -155,6 +158,7 @@ def create_poll():
         resp.status_code = 400
         return resp
     poll.user_id = current_user.id
+    poll.timestamp = datetime.utcnow()
     db.session.add(poll)
     db.session.commit()
 
@@ -165,8 +169,12 @@ def create_poll():
 
 
 @app.route("/polls/<int:id>")
+@login_required
 def get_poll(id):
     poll = Poll.query.get_or_404(id)
+    u = poll.add_viewer(current_user)
+    db.session.add(u)
+    db.session.commit()
     return poll_schema.jsonify(poll)
 
 
@@ -210,6 +218,8 @@ def create_question(id):
             resp.status_code = 400
             return resp
         question.poll_id = id
+        if question.def_answer is None:
+            question.def_answer=False
         db.session.add(question)
         db.session.commit()
 
@@ -292,7 +302,7 @@ def get_answer(id, q_id, p_id):
 @login_required
 def change_answer(p_id, q_id, id):
     poll = Poll.query.get_or_404(p_id)
-    Question.query.get_or_404(id)
+    Question.query.get_or_404(q_id)
     if current_user.id == poll.user_id:
         answer = Answer.query.get_or_404(id)
         if request.form['text']:
@@ -318,16 +328,16 @@ def change_answer(p_id, q_id, id):
 def reply(id, q_id, p_id):
     Poll.query.get_or_404(p_id)
     question = Question.query.get_or_404(q_id)
-
-    answers = question.answers
-    for answer in answers:
-        a_id = answer.id
-        a = Answer.query.get_or_404(a_id)
-        users = a.user
-        for user in users:
-            if user.id == current_user.id:
-                answer.cancel_reply(current_user)
-                break
+    if question.def_answer:
+        answers = question.answers
+        for answer in answers:
+            a_id = answer.id
+            a = Answer.query.get_or_404(a_id)
+            users = a.user
+            for user in users:
+                if user.id == current_user.id:
+                    answer.cancel_reply(current_user)
+                    break
     answer = Answer.query.get_or_404(id)
     u = answer.reply(current_user)
     db.session.add(u)

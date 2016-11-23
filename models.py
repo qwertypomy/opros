@@ -5,8 +5,12 @@ from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
 
-association_table = db.Table('association', db.Model.metadata,
+answer_user = db.Table('answer_user', db.Model.metadata,
     db.Column('answer_id', db.Integer, db.ForeignKey('answer.id')),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
+)
+poll_user = db.Table('poll_user', db.Model.metadata,
+    db.Column('poll_id', db.Integer, db.ForeignKey('poll.id')),
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'))
 )
 
@@ -25,6 +29,18 @@ class User(db.Model, UserMixin):
         self.password = generate_password_hash(password)
         self.user_name = user_name
 
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     def get_id(self):
         return self.id
 
@@ -39,18 +55,25 @@ class User(db.Model, UserMixin):
 class Poll(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(128), nullable=False)
+    timestamp = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     questions = db.relationship('Question', backref='poll',
                                 lazy='dynamic')
-
+    viewers = db.relationship("User", secondary=poll_user)
     @property
     def url(self):
         return url_for("get_poll", id=self.id)
+
+    def add_viewer(self, viewer):
+        self.viewers.append(viewer)
+        return self
+
 
 
 class Question(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(256), nullable=False)
+    def_answer = db.Column(db.Boolean)
     poll_id = db.Column(db.Integer, db.ForeignKey('poll.id'))
     answers = db.relationship('Answer', backref='question',
                               lazy='dynamic')
@@ -64,7 +87,7 @@ class Answer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String(128), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('question.id'))
-    user = db.relationship("User", secondary=association_table)
+    user = db.relationship("User", secondary=answer_user)
 
     @property
     def get_poll_id(self):
