@@ -1,7 +1,6 @@
 from flask import url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
 
@@ -17,16 +16,14 @@ poll_user = db.Table('poll_user', db.Model.metadata,
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(16),unique=True, nullable=False)
-    password = db.Column(db.String, nullable=False)
+    email = db.Column(db.String(256),unique=True, nullable=False)
     user_name = db.Column(db.String(32), nullable=False)
     api_key = db.Column(db.String(64), unique=True, index=True)
     polls = db.relationship('Poll', backref='user',
                             lazy='dynamic')
 
-    def __init__(self, email, password, user_name):
+    def __init__(self, email, user_name):
         self.email = email
-        self.password = generate_password_hash(password)
         self.user_name = user_name
 
     @property
